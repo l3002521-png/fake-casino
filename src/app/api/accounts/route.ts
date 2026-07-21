@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@/utils/db';
+import { getDb } from '@/utils/db';
 
 export async function GET(req: NextRequest) {
   try {
+    const sql = await getDb();
     const accounts = await sql`SELECT id, username, kycStatus, kycDoc, isAdmin, is2faEnabled, balance FROM accounts`;
     return NextResponse.json(accounts);
   } catch (error) {
