@@ -67,11 +67,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const res = await fetch('/api/accounts');
       if (res.ok) {
         const data = await res.json();
-        // Convert integer booleans from sqlite back to boolean
-        const formatted = data.map((a: any) => ({
+        const formatted = data.map((a: Account & Record<string, unknown>) => ({
             ...a,
-            isAdmin: Boolean(a.isAdmin),
-            is2faEnabled: Boolean(a.is2faEnabled)
+            kycStatus: a.kycStatus ?? a.kycstatus ?? 'none',
+            isAdmin: Boolean(a.isAdmin ?? a.isadmin),
+            is2faEnabled: Boolean(a.is2faEnabled ?? a.is2faenabled),
+            balance: Number(a.balance ?? 0),
         }));
         setAccounts(formatted);
       }
@@ -94,8 +95,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
          if (data.success && data.user) {
            const formattedUser = {
               ...data.user,
-              isAdmin: Boolean(data.user.isAdmin),
-              is2faEnabled: Boolean(data.user.is2faEnabled)
+              kycStatus: data.user.kycStatus ?? data.user.kycstatus ?? 'none',
+              isAdmin: Boolean(data.user.isAdmin ?? data.user.isadmin),
+              is2faEnabled: Boolean(data.user.is2faEnabled ?? data.user.is2faenabled),
+              balance: Number(data.user.balance ?? 0),
            };
            
            setCurrentUser((prev: Account | null) => {
@@ -208,10 +211,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password?: string) => {
       const res = await apiCall('login', { username, password });
       if (res.success) {
+          if (res.requires2fa) {
+              return { success: true, requires2fa: true, userId: res.userId };
+          }
           setCurrentUser(res.user);
           setIsLoggedIn(true);
           localStorage.setItem("casino_current_user", JSON.stringify(res.user));
-          return { success: true, requires2fa: res.user.is2faEnabled };
+          return { success: true };
       }
       return { success: false, error: res.error };
   };
