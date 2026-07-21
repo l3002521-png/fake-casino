@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'getSiteSettings') {
-        const stmnt = db.prepare('SELECT showPrototypeMessages, showDisclaimerScreen FROM site_settings WHERE id = "global"');
+        const stmnt = db.prepare("SELECT showPrototypeMessages, showDisclaimerScreen FROM site_settings WHERE id = 'global'");
         const settings = stmnt.get() as any;
         return NextResponse.json({ 
             success: true, 
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
 
     if (action === 'updateSiteSettings') {
         const { showPrototypeMessages, showDisclaimerScreen } = payload;
-        const stmnt = db.prepare('UPDATE site_settings SET showPrototypeMessages = ?, showDisclaimerScreen = ? WHERE id = "global"');
+        const stmnt = db.prepare("UPDATE site_settings SET showPrototypeMessages = ?, showDisclaimerScreen = ? WHERE id = 'global'");
         stmnt.run(showPrototypeMessages ? 1 : 0, showDisclaimerScreen ? 1 : 0);
         return NextResponse.json({ success: true });
     }
