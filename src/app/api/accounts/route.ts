@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/utils/db';
+import { sql } from '@/utils/db';
 
-export function GET(req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const stmnt = db.prepare('SELECT id, username, kycStatus, kycDoc, isAdmin, is2faEnabled, balance FROM accounts');
-    const accounts = stmnt.all();
+    const accounts = await sql`SELECT id, username, kycStatus, kycDoc, isAdmin, is2faEnabled, balance FROM accounts`;
     return NextResponse.json(accounts);
   } catch (error) {
     console.error("Failed to fetch accounts:", error);
