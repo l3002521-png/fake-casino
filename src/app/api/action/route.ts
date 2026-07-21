@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/utils/db';
+import { sql } from '@/utils/db';
 import { ethers } from 'ethers';
 import speakeasy from 'speakeasy';
 
@@ -8,7 +8,6 @@ const provider = new ethers.JsonRpcProvider(`https://sepolia.infura.io/v3/3832ce
 
 export async function POST(req: NextRequest) {
   try {
-    const sql = await getDb();
     const body = await req.json();
     const { action, payload } = body;
 
