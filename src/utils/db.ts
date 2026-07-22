@@ -143,6 +143,35 @@ export async function initDb() {
       VALUES ('admin-root-001', 'admin', 'adminpassword', 'approved', 1, 1000000)
     `;
   }
+
+  await db`
+    CREATE TABLE IF NOT EXISTS crypto_wallet (
+      id SERIAL PRIMARY KEY,
+      userId TEXT NOT NULL UNIQUE REFERENCES accounts(id) ON DELETE CASCADE,
+      holdings TEXT NOT NULL DEFAULT '{}',
+      createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `;
+
+  await db`
+    CREATE TABLE IF NOT EXISTS crypto_transactions (
+      id SERIAL PRIMARY KEY,
+      userId TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      cryptoSymbol TEXT NOT NULL,
+      type TEXT NOT NULL,
+      amount DOUBLE PRECISION NOT NULL,
+      priceAtTransaction DOUBLE PRECISION NOT NULL,
+      totalValue DOUBLE PRECISION NOT NULL,
+      timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `;
+
+  // Add missing crypto_wallet columns if they don't exist
+  try {
+    await db`ALTER TABLE crypto_wallet ADD COLUMN holdings TEXT;`;
+  } catch (e: unknown) {
+    // Column already exists, ignore error
+  }
 }
 
 export async function ensureDb() {

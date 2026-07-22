@@ -379,6 +379,98 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
+    if (action === 'getCryptoPortfolio') {
+      const { userId } = payload;
+      let portfolio = await sql`SELECT holdings FROM crypto_wallet WHERE userId = ${userId}`;
+      
+      if (portfolio.length === 0) {
+        await sql`INSERT INTO crypto_wallet (userId, holdings) VALUES (${userId}, '{}')`;
+        portfolio = [{ holdings: '{}' }];
+      }
+      
+      const holdings = JSON.parse(portfolio[0].holdings || '{}');
+      return NextResponse.json({ success: true, holdings });
+    }
+
+    if (action === 'buyCrypto') {
+      const { userId, symbol, amount, currentPrice } = payload;
+      const totalCost = amount * currentPrice;
+
+      // Check user balance
+      const user = await sql`SELECT balance FROM accounts WHERE id = ${userId}`;
+      if (user.length === 0 || user[0].balance < totalCost) {
+        return NextResponse.json({ success: false, error: 'Insufficient balance' }, { status: 400 });
+      }
+
+      // Deduct from balance
+      await sql`UPDATE accounts SET balance = balance - ${totalCost} WHERE id = ${userId}`;
+
+      // Update portfolio
+      let portfolio = await sql`SELECT holdings FROM crypto_wallet WHERE userId = ${userId}`;
+      if (portfolio.length === 0) {
+        await sql`INSERT INTO crypto_wallet (userId, holdings) VALUES (${userId}, '{}')`;
+        portfolio = [{ holdings: '{}' }];
+      }
+
+      const holdings = JSON.parse(portfolio[0].holdings || '{}');
+      holdings[symbol] = (holdings[symbol] || 0) + amount;
+
+      await sql`UPDATE crypto_wallet SET holdings = ${JSON.stringify(holdings)} WHERE userId = ${userId}`;
+
+      // Log transaction
+      await sql`
+        INSERT INTO crypto_transactions (userId, cryptoSymbol, type, amount, priceAtTransaction, totalValue)
+        VALUES (${userId}, ${symbol}, 'BUY', ${amount}, ${currentPrice}, ${totalCost})
+      `;
+
+      return NextResponse.json({ success: true, holdings });
+    }
+
+    if (action === 'sellCrypto') {
+      const { userId, symbol, amount, currentPrice } = payload;
+      const totalValue = amount * currentPrice;
+
+      // Check portfolio
+      let portfolio = await sql`SELECT holdings FROM crypto_wallet WHERE userId = ${userId}`;
+      if (portfolio.length === 0) {
+        return NextResponse.json({ success: false, error: 'No portfolio' }, { status: 400 });
+      }
+
+      const holdings = JSON.parse(portfolio[0].holdings || '{}');
+      if (!holdings[symbol] || holdings[symbol] < amount) {
+        return NextResponse.json({ success: false, error: 'Insufficient crypto' }, { status: 400 });
+      }
+
+      // Update portfolio
+      holdings[symbol] -= amount;
+      if (holdings[symbol] <= 0) delete holdings[symbol];
+
+      await sql`UPDATE crypto_wallet SET holdings = ${JSON.stringify(holdings)} WHERE userId = ${userId}`;
+
+      // Add to balance
+      await sql`UPDATE accounts SET balance = balance + ${totalValue} WHERE id = ${userId}`;
+
+      // Log transaction
+      await sql`
+        INSERT INTO crypto_transactions (userId, cryptoSymbol, type, amount, priceAtTransaction, totalValue)
+        VALUES (${userId}, ${symbol}, 'SELL', ${amount}, ${currentPrice}, ${totalValue})
+      `;
+
+      return NextResponse.json({ success: true, holdings });
+    }
+
+    if (action === 'getCryptoHistory') {
+      const { userId } = payload;
+      const transactions = await sql`
+        SELECT cryptoSymbol, type, amount, priceAtTransaction, totalValue, timestamp
+        FROM crypto_transactions
+        WHERE userId = ${userId}
+        ORDER BY timestamp DESC
+        LIMIT 50
+      `;
+      return NextResponse.json({ success: true, transactions });
+    }
+
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error) {
     console.error('Action failed:', error);

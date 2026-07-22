@@ -37,6 +37,10 @@ interface AppState {
   logGame: (game: string, bet: number, win: number, multiplier: number) => Promise<void>;
   claimDailyReward: () => Promise<{ success: boolean; error?: string; message?: string }>;
   transferFunds: (toUsername: string, amount: number) => Promise<{ success: boolean; error?: string; message?: string }>;
+  getCryptoPortfolio: (userId: string) => Promise<{ [key: string]: number }>;
+  buyCrypto: (symbol: string, amount: number, currentPrice: number) => Promise<{ success: boolean; error?: string }>;
+  sellCrypto: (symbol: string, amount: number, currentPrice: number) => Promise<{ success: boolean; error?: string }>;
+  getCryptoHistory: (userId: string) => Promise<any[]>;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -305,6 +309,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return { success: res.success, error: res.error, message: res.message };
   };
 
+  const getCryptoPortfolio = async (userId: string) => {
+    const res = await apiCall('getCryptoPortfolio', { userId });
+    return res.holdings || {};
+  };
+
+  const buyCrypto = async (symbol: string, amount: number, currentPrice: number) => {
+    if (!currentUser) return { success: false, error: 'Not logged in' };
+    const res = await apiCall('buyCrypto', { userId: currentUser.id, symbol, amount, currentPrice });
+    if (res.success) {
+      const totalCost = amount * currentPrice;
+      setCurrentUser({ ...currentUser, balance: currentUser.balance - totalCost });
+    }
+    return { success: res.success, error: res.error };
+  };
+
+  const sellCrypto = async (symbol: string, amount: number, currentPrice: number) => {
+    if (!currentUser) return { success: false, error: 'Not logged in' };
+    const res = await apiCall('sellCrypto', { userId: currentUser.id, symbol, amount, currentPrice });
+    if (res.success) {
+      const totalValue = amount * currentPrice;
+      setCurrentUser({ ...currentUser, balance: currentUser.balance + totalValue });
+    }
+    return { success: res.success, error: res.error };
+  };
+
+  const getCryptoHistory = async (userId: string) => {
+    const res = await apiCall('getCryptoHistory', { userId });
+    return res.transactions || [];
+  };
+
   if (!mounted) {
     return null;
   }
@@ -331,7 +365,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         refreshAccounts,
         logGame,
         claimDailyReward,
-        transferFunds
+        transferFunds,
+        getCryptoPortfolio,
+        buyCrypto,
+        sellCrypto,
+        getCryptoHistory
       }}
     >
       {children}
