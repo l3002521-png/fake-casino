@@ -2,15 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { useAppContext } from '@/app/AppContext';
-import { Wallet, Copy, AlertTriangle } from 'lucide-react';
+import { Wallet, Copy, AlertTriangle, Send } from 'lucide-react';
 import QRCode from 'qrcode';
 
 export default function WalletPage() {
-    const { currentUser } = useAppContext();
+    const { currentUser, transferFunds } = useAppContext();
     const [address, setAddress] = useState('');
     const [balance, setBalance] = useState('0.0');
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     const [copied, setCopied] = useState(false);
+    const [recipientUsername, setRecipientUsername] = useState('');
+    const [transferAmount, setTransferAmount] = useState('');
+    const [isTransferring, setIsTransferring] = useState(false);
+    const [transferMessage, setTransferMessage] = useState('');
 
     useEffect(() => {
         if (!currentUser) return;
@@ -50,6 +54,26 @@ export default function WalletPage() {
         navigator.clipboard.writeText(address);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleTransfer = async () => {
+        if (!recipientUsername || !transferAmount) {
+            setTransferMessage('Please enter recipient and amount');
+            setTimeout(() => setTransferMessage(''), 3000);
+            return;
+        }
+
+        setIsTransferring(true);
+        const result = await transferFunds(recipientUsername, Number(transferAmount));
+        if (result.success) {
+            setTransferMessage(result.message || 'Transfer successful!');
+            setRecipientUsername('');
+            setTransferAmount('');
+        } else {
+            setTransferMessage(result.error || 'Transfer failed');
+        }
+        setIsTransferring(false);
+        setTimeout(() => setTransferMessage(''), 3000);
     };
     
     return (
@@ -102,6 +126,61 @@ export default function WalletPage() {
                      </p>
                 </div>
 
+            </div>
+
+            {/* Fund Transfer Section */}
+            <div className="mt-12">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
+                    <Send className="w-8 h-8 text-cyan-500" />
+                    <div>
+                        <h2 className="text-2xl font-bold">Transfer Funds</h2>
+                        <p className="text-slate-400">Send money to other players.</p>
+                    </div>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-2 block">Recipient Username</label>
+                            <input
+                                type="text"
+                                placeholder="Enter username"
+                                value={recipientUsername}
+                                onChange={(e) => setRecipientUsername(e.target.value)}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-2 block">Amount ($)</label>
+                            <input
+                                type="number"
+                                placeholder="0.00"
+                                value={transferAmount}
+                                onChange={(e) => setTransferAmount(e.target.value)}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                            />
+                        </div>
+
+                        <button
+                            onClick={handleTransfer}
+                            disabled={isTransferring}
+                            className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500 text-white rounded-lg font-bold uppercase tracking-wider transition-colors mt-6"
+                        >
+                            {isTransferring ? 'Transferring...' : 'Send Funds'}
+                        </button>
+
+                        {transferMessage && (
+                            <div className={`text-center py-2 px-3 rounded-lg text-sm ${
+                                transferMessage.includes('successful') || transferMessage.includes('Transfer successful')
+                                    ? 'bg-emerald-500/20 text-emerald-200'
+                                    : 'bg-red-500/20 text-red-200'
+                            }`}>
+                                {transferMessage}
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

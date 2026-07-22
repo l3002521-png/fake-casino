@@ -62,7 +62,8 @@ export async function initDb() {
       twoFactorSecret TEXT,
       balance DOUBLE PRECISION NOT NULL DEFAULT 0,
       depositWalletAddress TEXT,
-      depositWalletPrivateKey TEXT
+      depositWalletPrivateKey TEXT,
+      lastDailyRewardDate TEXT
     );
   `;
 
@@ -91,13 +92,14 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS site_settings (
       id TEXT PRIMARY KEY,
       showPrototypeMessages INTEGER NOT NULL DEFAULT 1,
-      showDisclaimerScreen INTEGER NOT NULL DEFAULT 1
+      showDisclaimerScreen INTEGER NOT NULL DEFAULT 1,
+      autoApproveKYC INTEGER NOT NULL DEFAULT 0
     );
   `;
 
   await db`
-    INSERT INTO site_settings (id, showPrototypeMessages, showDisclaimerScreen)
-    VALUES ('global', 1, 1)
+    INSERT INTO site_settings (id, showPrototypeMessages, showDisclaimerScreen, autoApproveKYC)
+    VALUES ('global', 1, 1, 0)
     ON CONFLICT (id) DO NOTHING;
   `;
 

@@ -36,6 +36,7 @@ interface AppState {
   refreshAccounts: () => Promise<void>;
   logGame: (game: string, bet: number, win: number, multiplier: number) => Promise<void>;
   claimDailyReward: () => Promise<{ success: boolean; error?: string; message?: string }>;
+  transferFunds: (toUsername: string, amount: number) => Promise<{ success: boolean; error?: string; message?: string }>;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -294,6 +295,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return { success: res.success, error: res.error, message: res.message };
   };
 
+  const transferFunds = async (toUsername: string, amount: number) => {
+      if (!currentUser) return { success: false, error: 'Not logged in' };
+      const res = await apiCall('transferFunds', { fromUserId: currentUser.id, toUsername, amount });
+      if (res.success) {
+          setCurrentUser({ ...currentUser, balance: res.newBalance });
+          await refreshAccounts();
+      }
+      return { success: res.success, error: res.error, message: res.message };
+  };
+
   if (!mounted) {
     return null;
   }
@@ -319,7 +330,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         logout,
         refreshAccounts,
         logGame,
-        claimDailyReward
+        claimDailyReward,
+        transferFunds
       }}
     >
       {children}

@@ -279,7 +279,7 @@ export async function POST(req: NextRequest) {
       const today = new Date().toISOString().split('T')[0];
       
       const users = await sql`
-        SELECT lastDailyRewardDate, balance
+        SELECT lastDailyRewardDate, balance, kycStatus
         FROM accounts
         WHERE id = ${userId}
       `;
@@ -289,14 +289,17 @@ export async function POST(req: NextRequest) {
       }
       
       const lastRewardDate = getField<string>(users[0] as Record<string, unknown>, 'lastdailyrewarddate', 'lastDailyRewardDate');
+      const kycStatus = getField<string>(users[0] as Record<string, unknown>, 'kycstatus', 'kycStatus');
       
       if (lastRewardDate === today) {
         return NextResponse.json({ success: false, error: 'Daily reward already claimed today' }, { status: 400 });
       }
       
+      const rewardAmount = kycStatus === 'approved' ? 1000 : 100;
+      
       const result = await sql`
         UPDATE accounts 
-        SET balance = balance + 20, lastDailyRewardDate = ${today}
+        SET balance = balance + ${rewardAmount}, lastDailyRewardDate = ${today}
         WHERE id = ${userId} 
         RETURNING balance
       `;
@@ -304,7 +307,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ 
         success: true, 
         balance: Number(result[0].balance),
-        message: 'Claimed $20 daily reward!' 
+        message: `Claimed $${rewardAmount} daily reward!` 
+      });
+    }
+
+    if (action === 'transferFunds') {
+      const { fromUserId, toUsername, amount } = payload;
+      
+      if (amount <= 0) {
+        return NextResponse.json({ success: false, error: 'Amount must be greater than 0' }, { status: 400 });
+      }
+      
+      const fromUser = await sql`SELECT balance FROM accounts WHERE id = ${fromUserId}`;
+      if (fromUser.length === 0 || Number(fromUser[0].balance) < amount) {
+        return NextResponse.json({ success: false, error: 'Insufficient balance' }, { status: 400 });
+      }
+      
+      const toUser = await sql`SELECT id FROM accounts WHERE username = ${toUsername}`;
+      if (toUser.length === 0) {
+        return NextResponse.json({ success: false, error: 'Recipient not found' }, { status: 404 });
+      }
+      
+      const toUserId = String(toUser[0].id);
+      
+      // Deduct from sender
+      await sql`UPDATE accounts SET balance = balance - ${amount} WHERE id = ${fromUserId}`;
+      
+      // Add to recipient
+      const result = await sql`
+        UPDATE accounts 
+        SET balance = balance + ${amount} 
+        WHERE id = ${toUserId} 
+        RETURNING balance
+      `;
+      
+      return NextResponse.json({ 
+        success: true, 
+        message: `Transferred $${amount} to ${toUsername}`,
+        newBalance: Number(result[0].balance)
       });
     }
 

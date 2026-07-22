@@ -66,9 +66,9 @@ export default function Navbar() {
               </button>
             ) : (
               <>
-                <div className="hidden md:flex items-center gap-2 text-sm text-slate-300 bg-slate-800/50 px-3 py-1.5 rounded-md border border-slate-700/50">
-                  <User className="w-4 h-4" /> 
-                  <Link href="/settings" className="hover:text-emerald-400 transition-colors">
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-300 bg-slate-800/50 px-2 sm:px-3 py-1.5 rounded-md border border-slate-700/50">
+                  <User className="w-3 h-3 sm:w-4 sm:h-4" /> 
+                  <Link href="/settings" className="hover:text-emerald-400 transition-colors truncate max-w-[100px] sm:max-w-none">
                       {currentUser?.username}
                   </Link>
                 </div>
@@ -87,7 +87,7 @@ export default function Navbar() {
                   onClick={handleClaimReward} 
                   disabled={isClaimingReward}
                   className="flex items-center gap-2 bg-amber-900/40 px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-amber-600/50 hover:bg-amber-900/60 hover:border-amber-500/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Claim $20 daily reward"
+                  title={`Claim daily reward ($${kycStatus === "approved" ? 1000 : 100})`}
                 >
                   <Gift className="w-4 h-4 text-amber-400" />
                   <span className="font-bold text-amber-400 text-sm md:text-base hidden sm:inline">Daily</span>
