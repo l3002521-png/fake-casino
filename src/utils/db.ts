@@ -43,6 +43,7 @@ export function mapSiteSettings(row: Record<string, unknown> | undefined) {
   return {
     showPrototypeMessages: Boolean(row?.showprototypemessages ?? row?.showPrototypeMessages ?? true),
     showDisclaimerScreen: Boolean(row?.showdisclaimerscreen ?? row?.showDisclaimerScreen ?? true),
+    autoApproveKYC: Boolean(row?.autoapprovkyc ?? row?.autoApproveKYC ?? false),
   };
 }
 

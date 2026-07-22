@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
+import { type Language, getSystemLanguage } from "@/utils/language";
 
 export type KYCStatus = "none" | "pending" | "approved";
 
@@ -21,7 +22,9 @@ interface AppState {
   isLoggedIn: boolean;
   currentUser: Account | null;
   accounts: Account[];
-  siteSettings: { showPrototypeMessages: boolean, showDisclaimerScreen: boolean };
+  siteSettings: { showPrototypeMessages: boolean, showDisclaimerScreen: boolean, autoApproveKYC: boolean };
+  language: Language;
+  setLanguage: (lang: Language) => void;
   addBalance: (amount: number) => Promise<void>;
   deductBalance: (amount: number) => Promise<boolean>;
   submitKYC: (doc: string) => Promise<void>;
@@ -42,10 +45,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<Account | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [mounted, setMounted] = useState(false);
-  const [siteSettings, setSiteSettings] = useState({ showPrototypeMessages: true, showDisclaimerScreen: true });
+  const [siteSettings, setSiteSettings] = useState({ showPrototypeMessages: true, showDisclaimerScreen: true, autoApproveKYC: false });
+  const [language, setLanguageState] = useState<Language>('en');
 
   const balance = currentUser ? currentUser.balance : 0;
   const kycStatus = currentUser ? currentUser.kycStatus : "none";
+
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    localStorage.setItem('casino_language', lang);
+  };
 
   const refreshSiteSettings = useCallback(async () => {
       try {
@@ -124,6 +133,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const user = JSON.parse(savedUser);
           setCurrentUser(user);
           setIsLoggedIn(true);
+      }
+      const savedLanguage = localStorage.getItem("casino_language") as Language | null;
+      if (savedLanguage) {
+          setLanguageState(savedLanguage);
+      } else {
+          setLanguageState(getSystemLanguage());
       }
       setMounted(true);
     };
@@ -292,6 +307,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentUser,
         accounts,
         siteSettings,
+        language,
+        setLanguage,
         addBalance,
         deductBalance,
         submitKYC,

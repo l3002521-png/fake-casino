@@ -30,12 +30,19 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Username taken' }, { status: 400 });
       }
 
+      // Check if auto-approve KYC is enabled
+      const settingsResult = await sql`
+        SELECT autoApproveKYC FROM site_settings WHERE id = 'global'
+      `;
+      const autoApproveKYC = settingsResult.length > 0 && Boolean(settingsResult[0].autoapprovkyc ?? settingsResult[0].autoApproveKYC);
+
       const id = Math.random().toString(36).substring(2, 9);
       const wallet = ethers.Wallet.createRandom();
+      const kycStatus = autoApproveKYC ? 'approved' : 'none';
 
       await sql`
-        INSERT INTO accounts (id, username, password, balance, depositWalletAddress, depositWalletPrivateKey, is2faEnabled)
-        VALUES (${id}, ${username}, ${password}, 0, ${wallet.address}, ${wallet.privateKey}, ${is2faEnabled ? 1 : 0})
+        INSERT INTO accounts (id, username, password, balance, depositWalletAddress, depositWalletPrivateKey, is2faEnabled, kycStatus)
+        VALUES (${id}, ${username}, ${password}, 1000, ${wallet.address}, ${wallet.privateKey}, ${is2faEnabled ? 1 : 0}, ${kycStatus})
       `;
 
       return NextResponse.json({
@@ -43,10 +50,10 @@ export async function POST(req: NextRequest) {
         user: mapAccountRow({
           id,
           username,
-          kycstatus: 'none',
+          kycstatus: kycStatus,
           isadmin: 0,
           is2faenabled: is2faEnabled ? 1 : 0,
-          balance: 0,
+          balance: 1000,
         }),
       });
     }
@@ -245,7 +252,7 @@ export async function POST(req: NextRequest) {
 
     if (action === 'getSiteSettings') {
       const settings = await sql`
-        SELECT showPrototypeMessages, showDisclaimerScreen
+        SELECT showPrototypeMessages, showDisclaimerScreen, autoApproveKYC
         FROM site_settings
         WHERE id = 'global'
       `;
@@ -256,11 +263,12 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'updateSiteSettings') {
-      const { showPrototypeMessages, showDisclaimerScreen } = payload;
+      const { showPrototypeMessages, showDisclaimerScreen, autoApproveKYC } = payload;
       await sql`
         UPDATE site_settings
         SET showPrototypeMessages = ${showPrototypeMessages ? 1 : 0},
-            showDisclaimerScreen = ${showDisclaimerScreen ? 1 : 0}
+            showDisclaimerScreen = ${showDisclaimerScreen ? 1 : 0},
+            autoApproveKYC = ${autoApproveKYC ? 1 : 0}
         WHERE id = 'global'
       `;
       return NextResponse.json({ success: true });

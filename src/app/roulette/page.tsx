@@ -62,7 +62,7 @@ export default function RoulettePage() {
         } else {
             logGame('roulette', bet, 0, 0);
         }
-    }, 4000);
+    }, 4500);
   };
 
   if (kycStatus !== "approved") {
@@ -110,7 +110,7 @@ export default function RoulettePage() {
               <motion.div 
                   className="w-full h-full rounded-full border-[16px] border-slate-950 relative overflow-hidden bg-slate-900 shadow-[inset_0_0_50px_rgba(0,0,0,0.8)]"
                   animate={{ rotate: rotation }}
-                  transition={{ duration: 4, ease: [0.2, 0.8, 0.2, 1] }}
+                  transition={{ duration: 4.5, ease: "easeOut" }}
               >
                   {ROULETTE_NUMBERS.map((num, i) => {
                       const color = getColor(num);

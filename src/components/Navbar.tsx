@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import { useAppContext } from "@/app/AppContext";
-import { Wallet, ShieldCheck, ShieldAlert, Shield, LogOut, User, Lock, KeyRound, Gift } from "lucide-react";
+import { Wallet, ShieldCheck, ShieldAlert, Shield, LogOut, User, Lock, KeyRound, Gift, Globe } from "lucide-react";
 import { useState } from "react";
 import AuthModal from "./AuthModal";
 
 export default function Navbar() {
-  const { balance, kycStatus, isLoggedIn, currentUser, logout, siteSettings, claimDailyReward } = useAppContext();
+  const { balance, kycStatus, isLoggedIn, currentUser, logout, siteSettings, claimDailyReward, language, setLanguage } = useAppContext();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isClaimingReward, setIsClaimingReward] = useState(false);
   const [rewardMessage, setRewardMessage] = useState<string | null>(null);
+  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
 
   const handleClaimReward = async () => {
     setIsClaimingReward(true);
@@ -91,6 +92,39 @@ export default function Navbar() {
                   <Gift className="w-4 h-4 text-amber-400" />
                   <span className="font-bold text-amber-400 text-sm md:text-base hidden sm:inline">Daily</span>
                 </button>
+
+                <div className="relative">
+                  <button 
+                    onClick={() => setIsLanguageOpen(!isLanguageOpen)}
+                    className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-slate-700 hover:bg-slate-700 transition-colors"
+                    title="Change language"
+                  >
+                    <Globe className="w-4 h-4 text-slate-300" />
+                    <span className="text-sm font-bold text-slate-300">{language.toUpperCase()}</span>
+                  </button>
+                  {isLanguageOpen && (
+                    <div className="absolute right-0 mt-2 bg-slate-800 border border-slate-700 rounded-md shadow-lg z-50 min-w-max">
+                      <button
+                        onClick={() => {
+                          setLanguage('en');
+                          setIsLanguageOpen(false);
+                        }}
+                        className={`block w-full text-left px-4 py-2 ${language === 'en' ? 'bg-slate-700 text-emerald-400' : 'text-slate-300 hover:bg-slate-700'} transition-colors`}
+                      >
+                        English
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLanguage('pl');
+                          setIsLanguageOpen(false);
+                        }}
+                        className={`block w-full text-left px-4 py-2 ${language === 'pl' ? 'bg-slate-700 text-emerald-400' : 'text-slate-300 hover:bg-slate-700'} transition-colors border-t border-slate-700`}
+                      >
+                        Polski
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 <Link href="/wallet" className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-slate-700 shadow-inner hover:bg-slate-700 transition-colors">
                   <Wallet className="w-4 h-4 text-emerald-400" />
