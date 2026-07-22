@@ -127,7 +127,7 @@ export async function initDb() {
   `;
 
   // Initialize default game odds
-  const defaultGames = ['slots', 'crash', 'coinflip', 'roulette', 'dice', 'blackjack', 'hilo', 'keno', 'mines', 'plinko', 'video-poker', 'baccarat', 'tower', 'wheel'];
+  const defaultGames = ['slots', 'crash', 'coinflip', 'chicken_run', 'dice', 'blackjack', 'hilo', 'keno', 'mines', 'plinko', 'video-poker', 'baccarat', 'tower', 'wheel'];
   for (const game of defaultGames) {
     await db`
       INSERT INTO game_odds (gameName, houseEdge, multiplier, enabled)

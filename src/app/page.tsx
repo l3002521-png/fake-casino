@@ -47,8 +47,8 @@ const GAMES = [
         pattern: "radial-gradient(circle at 50% 50%, rgba(245,158,11,0.1) 0%, transparent 70%)"
     },
     { 
-        title: "Roulette", 
-        href: "/roulette", 
+        title: "Chicken Run",
+        href: "/roulette",
         icon: Target, 
         bgClass: "bg-red-500", 
         textClass: "text-red-400", 
