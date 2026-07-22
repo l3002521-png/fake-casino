@@ -103,6 +103,26 @@ export async function initDb() {
     ON CONFLICT (id) DO NOTHING;
   `;
 
+  await db`
+    CREATE TABLE IF NOT EXISTS game_odds (
+      gameName TEXT PRIMARY KEY,
+      houseEdge DOUBLE PRECISION NOT NULL DEFAULT 0.05,
+      multiplier DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `;
+
+  // Initialize default game odds
+  const defaultGames = ['slots', 'crash', 'coinflip', 'roulette', 'dice', 'blackjack', 'hilo', 'keno', 'mines', 'plinko', 'video-poker', 'baccarat', 'tower', 'wheel'];
+  for (const game of defaultGames) {
+    await db`
+      INSERT INTO game_odds (gameName, houseEdge, multiplier, enabled)
+      VALUES (${game}, 0.05, 1.0, 1)
+      ON CONFLICT (gameName) DO NOTHING;
+    `;
+  }
+
   const adminExists = await db`SELECT id FROM accounts WHERE username = 'admin'`;
   if (adminExists.length === 0) {
     await db`

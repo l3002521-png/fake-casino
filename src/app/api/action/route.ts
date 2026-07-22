@@ -185,6 +185,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
+    if (action === 'adminSetBalance') {
+      const { userId, newBalance } = payload;
+      const result = await sql`
+        UPDATE accounts SET balance = ${newBalance} WHERE id = ${userId} RETURNING balance
+      `;
+      return NextResponse.json({ success: true, balance: Number(result[0].balance) });
+    }
+
     if (action === 'getUser') {
       const { id } = payload;
       const users = await sql`
@@ -346,6 +354,29 @@ export async function POST(req: NextRequest) {
         message: `Transferred $${amount} to ${toUsername}`,
         newBalance: Number(result[0].balance)
       });
+    }
+
+    if (action === 'getGameOdds') {
+      const odds = await sql`SELECT * FROM game_odds ORDER BY gameName`;
+      return NextResponse.json({ 
+        success: true, 
+        odds: odds.map(row => ({
+          gameName: String(row.gamename ?? row.gameName),
+          houseEdge: Number(row.houseedge ?? row.houseEdge),
+          multiplier: Number(row.multiplier),
+          enabled: Boolean(row.enabled)
+        }))
+      });
+    }
+
+    if (action === 'updateGameOdds') {
+      const { gameName, houseEdge, multiplier } = payload;
+      await sql`
+        UPDATE game_odds 
+        SET houseEdge = ${houseEdge}, multiplier = ${multiplier}, updatedAt = NOW()
+        WHERE gameName = ${gameName}
+      `;
+      return NextResponse.json({ success: true });
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
