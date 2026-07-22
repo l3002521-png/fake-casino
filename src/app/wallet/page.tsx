@@ -6,8 +6,8 @@ import { Wallet, Copy, AlertTriangle, Send, TrendingUp } from 'lucide-react';
 import QRCode from 'qrcode';
 
 export default function WalletPage() {
-    const { currentUser, transferFunds, buyCrypto, sellCrypto } = useAppContext();
-    const [activeTab, setActiveTab] = useState<'deposit' | 'crypto'>('deposit');
+    const { currentUser, transferFunds, buyCrypto, sellCrypto, requestWithdrawal } = useAppContext();
+    const [activeTab, setActiveTab] = useState<'deposit' | 'crypto' | 'withdraw'>('deposit');
     const [address, setAddress] = useState('');
     const [balance, setBalance] = useState('0.0');
     const [qrCodeUrl, setQrCodeUrl] = useState('');
@@ -25,6 +25,12 @@ export default function WalletPage() {
     const [cryptoMessage, setCryptoMessage] = useState('');
     const [isTrading, setIsTrading] = useState(false);
     const [transactions, setTransactions] = useState<any[]>([]);
+
+    // Withdrawal state
+    const [withdrawAmount, setWithdrawAmount] = useState('');
+    const [ethAddress, setEthAddress] = useState('');
+    const [withdrawMessage, setWithdrawMessage] = useState('');
+    const [isWithdrawing, setIsWithdrawing] = useState(false);
 
     useEffect(() => {
         if (!currentUser) return;
@@ -169,6 +175,26 @@ export default function WalletPage() {
         setTimeout(() => setCryptoMessage(''), 3000);
     };
 
+    const handleWithdraw = async () => {
+        if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
+            setWithdrawMessage('Invalid amount');
+            return;
+        }
+        if (!ethAddress) {
+            setWithdrawMessage('Please enter Ethereum address');
+            return;
+        }
+        setIsWithdrawing(true);
+        const result = await requestWithdrawal(parseFloat(withdrawAmount));
+        setWithdrawMessage(result.message || result.error || 'Withdrawal requested');
+        if (result.success) {
+            setWithdrawAmount('');
+            setEthAddress('');
+        }
+        setIsWithdrawing(false);
+        setTimeout(() => setWithdrawMessage(''), 3000);
+    };
+
     const portfolioValue = Object.entries(portfolio).reduce((total, [symbol, amount]) => {
         return total + (amount * (cryptoPrices[symbol] || 0));
     }, 0);
@@ -196,6 +222,16 @@ export default function WalletPage() {
                     }`}
                 >
                     <TrendingUp className="w-4 h-4" />Trading
+                </button>
+                <button
+                    onClick={() => setActiveTab('withdraw')}
+                    className={`px-4 py-3 font-bold uppercase tracking-wider transition-colors flex items-center gap-2 ${
+                        activeTab === 'withdraw'
+                            ? 'text-emerald-500 border-b-2 border-emerald-500'
+                            : 'text-slate-400 hover:text-slate-300'
+                    }`}
+                >
+                    <Send className="w-4 h-4" />Withdraw
                 </button>
             </div>
 
@@ -423,6 +459,68 @@ export default function WalletPage() {
                             </div>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Withdrawal Tab */}
+            {activeTab === 'withdraw' && (
+                <div>
+                    <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-800">
+                        <Send className="w-8 h-8 text-emerald-500" />
+                        <div>
+                            <h1 className="text-3xl font-bold">Request Withdrawal</h1>
+                            <p className="text-slate-400">Withdraw funds to your Ethereum wallet</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 space-y-6">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider">Withdrawal Amount ($)</label>
+                            <input
+                                type="number"
+                                value={withdrawAmount}
+                                onChange={(e) => setWithdrawAmount(e.target.value)}
+                                placeholder="0.00"
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider">Ethereum Wallet Address</label>
+                            <input
+                                type="text"
+                                value={ethAddress}
+                                onChange={(e) => setEthAddress(e.target.value)}
+                                placeholder="0x..."
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono text-sm"
+                            />
+                            <p className="text-xs text-slate-500 mt-2">Your address will NOT be stored. Save a screenshot for verification.</p>
+                        </div>
+
+                        {withdrawMessage && (
+                            <div className={`p-4 rounded-lg border ${
+                                withdrawMessage.includes('Withdrawal requested')
+                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                    : 'bg-red-500/10 border-red-500/20 text-red-400'
+                            }`}>
+                                {withdrawMessage}
+                            </div>
+                        )}
+
+                        <button
+                            onClick={handleWithdraw}
+                            disabled={isWithdrawing || !withdrawAmount || !ethAddress}
+                            className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white rounded-lg font-bold uppercase tracking-wider transition-colors"
+                        >
+                            {isWithdrawing ? 'Processing...' : 'Request Withdrawal'}
+                        </button>
+
+                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+                            <p className="text-sm text-amber-300">
+                                <strong>Note:</strong> Withdrawal requests will be reviewed by an administrator. Your address is shown for confirmation only and is not saved.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

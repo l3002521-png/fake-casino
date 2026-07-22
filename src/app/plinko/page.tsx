@@ -118,46 +118,36 @@ export default function PlinkoPage() {
                 {/* Animated Balls */}
                 <AnimatePresence>
                     {balls.map(ball => {
-                        // Create a sequence of zig-zag points for the ball to follow
-                        const keyframesX = [50];
-                        const keyframesY = [-10];
-                        
-                        let currentX = 50;
                         const targetX = 10 + (ball.resultIndex * 10);
                         const steps = PINS_ROWS;
                         
-                        for (let i = 1; i <= steps; i++) {
-                            // Determine direction to step based on target, with some randomness
-                            const progress = i / steps;
+                        // Generate keyframes for smooth descent
+                        const keyframes = Array.from({ length: steps + 2 }, (_, i) => {
+                            const progress = i / (steps + 1);
                             const expectedX = 50 + (targetX - 50) * progress;
-                            
-                            // Jitter left or right slightly as it hits pins
-                            const hitLeft = Math.random() > 0.5;
-                            currentX = expectedX + (hitLeft ? -3 : 3);
-                            
-                            keyframesX.push(currentX);
-                            keyframesY.push((i / steps) * 80);
-                        }
-                        
-                        // Final landing spot
-                        keyframesX.push(targetX);
-                        keyframesY.push(85);
+                            const jitter = Math.random() > 0.5 ? -3 : 3;
+                            const x = expectedX + jitter;
+                            const y = progress * 85;
+                            return { x, y, progress };
+                        });
+
+                        const finalX = keyframes[keyframes.length - 1].x;
+                        const finalY = keyframes[keyframes.length - 1].y;
 
                         return (
                             <motion.div
                                 key={ball.id}
-                                initial={{ top: "-10%", left: "50%", opacity: 1 }}
+                                initial={{ left: "50%", top: "-10%", opacity: 1 }}
                                 animate={{ 
-                                    top: keyframesY.map(y => `${y}%`), 
-                                    left: keyframesX.map(x => `${x}%`)
+                                    left: [...keyframes.map(kf => `${kf.x}%`), `${finalX}%`],
+                                    top: [...keyframes.map(kf => `${kf.y}%`), `${finalY}%`]
                                 }}
                                 exit={{ opacity: 0 }}
                                 transition={{ 
-                                    duration: 2, 
-                                    ease: "linear",
-                                    times: Array.from({length: keyframesX.length}, (_, i) => i / (keyframesX.length - 1))
+                                    duration: 2,
+                                    ease: "linear"
                                 }}
-                                className="absolute w-4 h-4 rounded-full bg-fuchsia-500 shadow-[0_0_15px_rgba(217,70,239,0.8)] z-10 -ml-2 -mt-2"
+                                className="absolute w-4 h-4 rounded-full bg-fuchsia-500 shadow-[0_0_15px_rgba(217,70,239,0.8)] z-10 transform -translate-x-1/2 -translate-y-1/2"
                             />
                         )
                     })}

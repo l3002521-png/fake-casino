@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import { useAppContext } from "@/app/AppContext";
-import { AlertCircle, ArrowUp, ArrowDown, Equal } from "lucide-react";
-import Link from "next/link";
+import { ArrowUp, ArrowDown, Equal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/utils/cn";
 
 export default function HiLoPage() {
-  const { balance, kycStatus, deductBalance, addBalance, logGame } = useAppContext();
+  const { balance, deductBalance, addBalance, logGame } = useAppContext();
   
   const [bet, setBet] = useState(10);
   const [gameState, setGameState] = useState<"idle" | "playing">("idle");
@@ -69,23 +68,6 @@ export default function HiLoPage() {
       logGame("hilo", bet, won, multiplier);
       setGameState("idle");
   };
-
-  if (kycStatus !== "approved") {
-      return (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-6">
-              <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center">
-                  <AlertCircle className="w-10 h-10 text-amber-500" />
-              </div>
-              <div>
-                  <h2 className="text-3xl font-bold mb-2">KYC Required</h2>
-                  <p className="text-slate-400 max-w-md mx-auto">Please complete identity verification to access HiLo.</p>
-              </div>
-              <Link href="/kyc" className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold transition-colors">
-                  Verify Identity
-              </Link>
-          </div>
-      );
-  }
 
   const getCardDisplay = (val: number) => {
       if (val === 1) return "A";

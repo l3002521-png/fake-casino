@@ -1,13 +1,13 @@
 "use client";
 
 import { useAppContext } from "@/app/AppContext";
-import { Check, X, Shield, Lock, Users, Trash2, History, Zap } from "lucide-react";
+import { Check, X, Shield, Lock, Users, Trash2, History, Zap, TrendingDown, DollarSign } from "lucide-react";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { cn } from "@/utils/cn";
 
 export default function AdminPage() {
-  const { accounts, currentUser, approveKYC, rejectKYC, siteSettings, refreshAccounts } = useAppContext();
+  const { accounts, currentUser, approveKYC, rejectKYC, siteSettings, refreshAccounts, updateUserOdds } = useAppContext();
 
   const [historyData, setHistoryData] = useState<{ [userId: string]: any[] }>({});
   const [showHistoryFor, setShowHistoryFor] = useState<string | null>(null);
@@ -15,8 +15,22 @@ export default function AdminPage() {
   const [editingOdds, setEditingOdds] = useState<{ [key: string]: { houseEdge: number; multiplier: number } }>({});
   const [loadingOdds, setLoadingOdds] = useState(true);
 
+  // Withdrawal state
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [loadingWithdrawals, setLoadingWithdrawals] = useState(true);
+
+  // Per-user odds state
+  const [selectedUserOdds, setSelectedUserOdds] = useState<string>('');
+  const [selectedGameOdds, setSelectedGameOdds] = useState<string>('');
+  const [userOddsHouseEdge, setUserOddsHouseEdge] = useState<number>(0.05);
+  const [userOddsMultiplier, setUserOddsMultiplier] = useState<number>(1.0);
+  const [userOddsMessage, setUserOddsMessage] = useState('');
+
+  const games = ['slots', 'crash', 'coinflip', 'chicken_run', 'dice', 'blackjack', 'hilo', 'keno', 'mines', 'plinko', 'video-poker', 'baccarat', 'tower', 'wheel'];
+
   useEffect(() => {
     fetchGameOdds();
+    fetchWithdrawals();
   }, []);
 
   const fetchGameOdds = async () => {
@@ -85,6 +99,71 @@ export default function AdminPage() {
       } catch (e) {
           console.error("Failed to update settings", e);
       }
+  };
+
+  const fetchWithdrawals = async () => {
+    try {
+      setLoadingWithdrawals(true);
+      const res = await fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'getWithdrawalRequests', payload: {} })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setWithdrawals(data.requests);
+      }
+    } catch (e) {
+      console.error("Failed to fetch withdrawals", e);
+    } finally {
+      setLoadingWithdrawals(false);
+    }
+  };
+
+  const handleApproveWithdrawal = async (withdrawalId: number) => {
+    try {
+      const res = await fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approveWithdrawal', payload: { withdrawalId } })
+      });
+      if (res.ok) {
+        await fetchWithdrawals();
+      }
+    } catch (e) {
+      console.error("Failed to approve withdrawal", e);
+    }
+  };
+
+  const handleRejectWithdrawal = async (withdrawalId: number) => {
+    try {
+      const res = await fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'rejectWithdrawal', payload: { withdrawalId } })
+      });
+      if (res.ok) {
+        await fetchWithdrawals();
+      }
+    } catch (e) {
+      console.error("Failed to reject withdrawal", e);
+    }
+  };
+
+  const handleSetUserOdds = async () => {
+    if (!selectedUserOdds || !selectedGameOdds) {
+      setUserOddsMessage('Select both user and game');
+      return;
+    }
+    try {
+      await updateUserOdds(selectedUserOdds, selectedGameOdds, userOddsHouseEdge, userOddsMultiplier);
+      setUserOddsMessage('Odds updated successfully');
+      setSelectedUserOdds('');
+      setSelectedGameOdds('');
+      setTimeout(() => setUserOddsMessage(''), 2000);
+    } catch (e) {
+      setUserOddsMessage('Failed to update odds');
+    }
   };
 
   const fetchHistory = async (userId: string) => {
@@ -443,6 +522,152 @@ export default function AdminPage() {
             </table>
           </div>
         )}
+
+        {/* Per-User Odds Section */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+            <TrendingDown className="w-6 h-6 text-cyan-500" />
+            Customize Player Odds
+          </h2>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-300 mb-2">Select Player</label>
+                <select
+                  value={selectedUserOdds}
+                  onChange={(e) => setSelectedUserOdds(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                >
+                  <option value="">Choose player...</option>
+                  {accounts.map(a => (
+                    <option key={a.id} value={a.id}>{a.username}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-300 mb-2">Select Game</label>
+                <select
+                  value={selectedGameOdds}
+                  onChange={(e) => setSelectedGameOdds(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                >
+                  <option value="">Choose game...</option>
+                  {games.map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-300 mb-2">House Edge (0.01-0.50)</label>
+                <input
+                  type="number"
+                  min="0.01"
+                  max="0.50"
+                  step="0.01"
+                  value={userOddsHouseEdge}
+                  onChange={(e) => setUserOddsHouseEdge(parseFloat(e.target.value))}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-300 mb-2">Multiplier (0.5-2.0)</label>
+                <input
+                  type="number"
+                  min="0.5"
+                  max="2.0"
+                  step="0.1"
+                  value={userOddsMultiplier}
+                  onChange={(e) => setUserOddsMultiplier(parseFloat(e.target.value))}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                />
+              </div>
+            </div>
+            {userOddsMessage && (
+              <div className={`p-3 rounded-lg text-sm ${
+                userOddsMessage.includes('success')
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
+              }`}>
+                {userOddsMessage}
+              </div>
+            )}
+            <button
+              onClick={handleSetUserOdds}
+              className="w-full bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-lg font-bold transition-colors"
+            >
+              Apply Custom Odds
+            </button>
+          </div>
+        </div>
+
+        {/* Withdrawal Requests Section */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+            <DollarSign className="w-6 h-6 text-amber-500" />
+            Withdrawal Requests
+          </h2>
+          {loadingWithdrawals ? (
+            <div className="text-slate-400">Loading withdrawals...</div>
+          ) : withdrawals.length === 0 ? (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center text-slate-400">
+              No withdrawal requests
+            </div>
+          ) : (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-800">
+                    <th className="py-3 px-4 text-left font-medium">Player</th>
+                    <th className="py-3 px-4 text-left font-medium">Amount ($)</th>
+                    <th className="py-3 px-4 text-left font-medium">Status</th>
+                    <th className="py-3 px-4 text-left font-medium">Requested</th>
+                    <th className="py-3 px-4 text-left font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {withdrawals.map((wr) => (
+                    <tr key={wr.id} className="border-t border-slate-800 hover:bg-slate-850 transition-colors">
+                      <td className="py-3 px-4 font-bold">{wr.username}</td>
+                      <td className="py-3 px-4">${wr.amount.toFixed(2)}</td>
+                      <td className="py-3 px-4">
+                        <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                          wr.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
+                          wr.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' :
+                          'bg-red-500/20 text-red-400'
+                        }`}>
+                          {wr.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-400">
+                        {new Date(wr.requestedAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-3 px-4">
+                        {wr.status === 'pending' && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleApproveWithdrawal(wr.id)}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                            >
+                              <Check className="w-4 h-4" /> Approve
+                            </button>
+                            <button
+                              onClick={() => handleRejectWithdrawal(wr.id)}
+                              className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                            >
+                              <X className="w-4 h-4" /> Reject
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

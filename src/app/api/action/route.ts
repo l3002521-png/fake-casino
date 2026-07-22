@@ -471,6 +471,68 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, transactions });
     }
 
+    if (action === 'updateUserOdds') {
+      const { userId, gameName, houseEdge, multiplier } = payload;
+      await sql`
+        INSERT INTO user_game_odds (userId, gameName, houseEdge, multiplier)
+        VALUES (${userId}, ${gameName}, ${houseEdge}, ${multiplier})
+        ON CONFLICT (userId, gameName) DO UPDATE
+        SET houseEdge = ${houseEdge}, multiplier = ${multiplier}, updatedAt = NOW()
+      `;
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'getUserOdds') {
+      const { userId } = payload;
+      const odds = await sql`
+        SELECT gameName, houseEdge, multiplier FROM user_game_odds WHERE userId = ${userId}
+      `;
+      return NextResponse.json({ success: true, odds });
+    }
+
+    if (action === 'requestWithdrawal') {
+      const { userId, amount, ethAddress } = payload;
+      const user = await sql`SELECT balance FROM accounts WHERE id = ${userId}`;
+      if (user.length === 0 || user[0].balance < amount) {
+        return NextResponse.json({ success: false, error: 'Insufficient balance' }, { status: 400 });
+      }
+      
+      await sql`UPDATE accounts SET balance = balance - ${amount} WHERE id = ${userId}`;
+      
+      await sql`
+        INSERT INTO withdrawal_requests (userId, amount, status, requestedAt)
+        VALUES (${userId}, ${amount}, 'pending', NOW())
+      `;
+      
+      return NextResponse.json({ success: true, message: 'Withdrawal requested. Pending admin approval.' });
+    }
+
+    if (action === 'getWithdrawalRequests') {
+      const requests = await sql`
+        SELECT wr.id, wr.userId, wr.amount, wr.status, wr.requestedAt, a.username
+        FROM withdrawal_requests wr
+        JOIN accounts a ON wr.userId = a.id
+        ORDER BY wr.requestedAt DESC
+      `;
+      return NextResponse.json({ success: true, requests });
+    }
+
+    if (action === 'approveWithdrawal') {
+      const { withdrawalId } = payload;
+      await sql`UPDATE withdrawal_requests SET status = 'approved', approvedAt = NOW() WHERE id = ${withdrawalId}`;
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'rejectWithdrawal') {
+      const { withdrawalId } = payload;
+      const wr = await sql`SELECT userId, amount FROM withdrawal_requests WHERE id = ${withdrawalId}`;
+      if (wr.length > 0) {
+        await sql`UPDATE accounts SET balance = balance + ${wr[0].amount} WHERE id = ${wr[0].userid ?? wr[0].userId}`;
+      }
+      await sql`UPDATE withdrawal_requests SET status = 'rejected' WHERE id = ${withdrawalId}`;
+      return NextResponse.json({ success: true });
+    }
+
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error) {
     console.error('Action failed:', error);

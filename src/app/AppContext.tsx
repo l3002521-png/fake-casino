@@ -41,6 +41,8 @@ interface AppState {
   buyCrypto: (symbol: string, amount: number, currentPrice: number) => Promise<{ success: boolean; error?: string }>;
   sellCrypto: (symbol: string, amount: number, currentPrice: number) => Promise<{ success: boolean; error?: string }>;
   getCryptoHistory: (userId: string) => Promise<any[]>;
+  requestWithdrawal: (amount: number) => Promise<{ success: boolean; error?: string; message?: string }>;
+  updateUserOdds: (userId: string, gameName: string, houseEdge: number, multiplier: number) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -339,6 +341,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return res.transactions || [];
   };
 
+  const requestWithdrawal = async (amount: number) => {
+    if (!currentUser) return { success: false, error: 'Not logged in' };
+    const res = await apiCall('requestWithdrawal', { userId: currentUser.id, amount, ethAddress: '' });
+    if (res.success) {
+      setCurrentUser({ ...currentUser, balance: currentUser.balance - amount });
+    }
+    return { success: res.success, error: res.error, message: res.message };
+  };
+
+  const updateUserOdds = async (userId: string, gameName: string, houseEdge: number, multiplier: number) => {
+    const res = await apiCall('updateUserOdds', { userId, gameName, houseEdge, multiplier });
+    return { success: res.success, error: res.error };
+  };
+
   if (!mounted) {
     return null;
   }
@@ -369,7 +385,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         getCryptoPortfolio,
         buyCrypto,
         sellCrypto,
-        getCryptoHistory
+        getCryptoHistory,
+        requestWithdrawal,
+        updateUserOdds
       }}
     >
       {children}

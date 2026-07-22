@@ -172,6 +172,42 @@ export async function initDb() {
   } catch (e: unknown) {
     // Column already exists, ignore error
   }
+
+  await db`
+    CREATE TABLE IF NOT EXISTS user_game_odds (
+      id SERIAL PRIMARY KEY,
+      userId TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      gameName TEXT NOT NULL,
+      houseEdge DOUBLE PRECISION NOT NULL DEFAULT 0.05,
+      multiplier DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+      updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(userId, gameName)
+    );
+  `;
+
+  await db`
+    CREATE TABLE IF NOT EXISTS withdrawal_requests (
+      id SERIAL PRIMARY KEY,
+      userId TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      amount DOUBLE PRECISION NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      requestedAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      approvedAt TIMESTAMPTZ,
+      createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `;
+
+  await db`
+    CREATE TABLE IF NOT EXISTS session_replays (
+      id SERIAL PRIMARY KEY,
+      userId TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      gameName TEXT NOT NULL,
+      bet DOUBLE PRECISION NOT NULL,
+      result DOUBLE PRECISION NOT NULL,
+      multiplier DOUBLE PRECISION NOT NULL,
+      timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `;
 }
 
 export async function ensureDb() {

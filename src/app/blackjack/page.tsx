@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAppContext } from "@/app/AppContext";
-import { AlertCircle, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { cn } from "@/utils/cn";
-import Link from "next/link";
 
 type Suit = "hearts" | "diamonds" | "clubs" | "spades";
 type Rank = "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "J" | "Q" | "K" | "A";
@@ -91,7 +90,7 @@ const CardComponent = ({ card, className }: { card: Card; className?: string }) 
 };
 
 export default function BlackjackPage() {
-  const { balance, kycStatus, deductBalance, addBalance, logGame } = useAppContext();
+  const { balance, deductBalance, addBalance, logGame } = useAppContext();
   
   const [deck, setDeck] = useState<Card[]>([]);
   const [playerHand, setPlayerHand] = useState<Card[]>([]);
@@ -218,28 +217,6 @@ export default function BlackjackPage() {
     setDealerHand([]);
     setResult(null);
   };
-
-  if (kycStatus === "none") {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-6">
-        <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center">
-          <AlertCircle className="w-10 h-10 text-amber-500" />
-        </div>
-        <div>
-          <h2 className="text-3xl font-bold mb-2">KYC Required</h2>
-          <p className="text-slate-400 max-w-md mx-auto">
-            Please complete identity verification to access the tables. This ensures a secure playing environment.
-          </p>
-        </div>
-        <Link 
-          href="/kyc" 
-          className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold transition-colors"
-        >
-          Verify Identity
-        </Link>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col items-center gap-8 py-4">
