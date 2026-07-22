@@ -1,9 +1,9 @@
 "use client";
 
 import { useAppContext } from "@/app/AppContext";
-import { Check, X, Shield, Lock, Users, Trash2, History } from "lucide-react";
+import { Check, X, Shield, Lock, Users, Trash2, History, Zap } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/utils/cn";
 
 export default function AdminPage() {
@@ -11,6 +11,60 @@ export default function AdminPage() {
 
   const [historyData, setHistoryData] = useState<{ [userId: string]: any[] }>({});
   const [showHistoryFor, setShowHistoryFor] = useState<string | null>(null);
+  const [gameOdds, setGameOdds] = useState<any[]>([]);
+  const [editingOdds, setEditingOdds] = useState<{ [key: string]: { houseEdge: number; multiplier: number } }>({});
+  const [loadingOdds, setLoadingOdds] = useState(true);
+
+  useEffect(() => {
+    fetchGameOdds();
+  }, []);
+
+  const fetchGameOdds = async () => {
+    try {
+      const res = await fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'getGameOdds', payload: {} })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGameOdds(data.odds);
+        // Initialize editingOdds with current values
+        const initial: any = {};
+        data.odds.forEach((game: any) => {
+          initial[game.gameName] = { houseEdge: game.houseEdge, multiplier: game.multiplier };
+        });
+        setEditingOdds(initial);
+      }
+    } catch (e) {
+      console.error("Failed to fetch game odds", e);
+    } finally {
+      setLoadingOdds(false);
+    }
+  };
+
+  const handleUpdateOdds = async (gameName: string) => {
+    try {
+      const odds = editingOdds[gameName];
+      const res = await fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'updateGameOdds',
+          payload: {
+            gameName,
+            houseEdge: Math.min(Math.max(odds.houseEdge, 0.01), 0.50),
+            multiplier: Math.min(Math.max(odds.multiplier, 0.5), 2.0)
+          }
+        })
+      });
+      if (res.ok) {
+        await fetchGameOdds();
+      }
+    } catch (e) {
+      console.error("Failed to update odds", e);
+    }
+  };
 
   const handleSettingsToggle = async (key: 'showPrototypeMessages' | 'showDisclaimerScreen') => {
       try {
@@ -309,6 +363,87 @@ export default function AdminPage() {
               )}
           </div>
       )}
+
+      {/* Game Odds Management */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 mt-8">
+        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+          <Zap className="w-5 h-5 text-yellow-500" /> Game Odds & Balance
+        </h2>
+
+        {loadingOdds ? (
+          <div className="text-center py-8 text-slate-500">Loading game odds...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400">
+                  <th className="py-3 px-4 font-medium">Game</th>
+                  <th className="py-3 px-4 font-medium">House Edge</th>
+                  <th className="py-3 px-4 font-medium">Multiplier</th>
+                  <th className="py-3 px-4 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gameOdds.map((game) => (
+                  <tr key={game.gameName} className="border-b border-slate-800/50 hover:bg-slate-800/20">
+                    <td className="py-3 px-4 font-medium capitalize">{game.gameName}</td>
+                    <td className="py-3 px-4">
+                      <input
+                        type="number"
+                        min="0.01"
+                        max="0.50"
+                        step="0.01"
+                        value={editingOdds[game.gameName]?.houseEdge || game.houseEdge}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value);
+                          setEditingOdds(prev => ({
+                            ...prev,
+                            [game.gameName]: {
+                              ...prev[game.gameName],
+                              houseEdge: isNaN(value) ? 0 : value
+                            }
+                          }));
+                        }}
+                        className="w-24 px-2 py-1 rounded bg-slate-800 text-white border border-slate-700 text-sm"
+                      />
+                      <span className="text-slate-500 ml-2 text-xs">(0.01-0.50)</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <input
+                        type="number"
+                        min="0.5"
+                        max="2.0"
+                        step="0.1"
+                        value={editingOdds[game.gameName]?.multiplier || game.multiplier}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value);
+                          setEditingOdds(prev => ({
+                            ...prev,
+                            [game.gameName]: {
+                              ...prev[game.gameName],
+                              multiplier: isNaN(value) ? 1.0 : value
+                            }
+                          }));
+                        }}
+                        className="w-24 px-2 py-1 rounded bg-slate-800 text-white border border-slate-700 text-sm"
+                      />
+                      <span className="text-slate-500 ml-2 text-xs">(0.5-2.0)</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <button
+                        onClick={() => handleUpdateOdds(game.gameName)}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded text-sm transition-colors"
+                      >
+                        Save
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
