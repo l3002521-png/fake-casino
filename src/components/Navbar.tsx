@@ -2,13 +2,34 @@
 
 import Link from "next/link";
 import { useAppContext } from "@/app/AppContext";
-import { Wallet, ShieldCheck, ShieldAlert, Shield, LogOut, User, Lock, KeyRound } from "lucide-react";
+import { Wallet, ShieldCheck, ShieldAlert, Shield, LogOut, User, Lock, KeyRound, Gift } from "lucide-react";
 import { useState } from "react";
 import AuthModal from "./AuthModal";
 
 export default function Navbar() {
-  const { balance, kycStatus, isLoggedIn, currentUser, logout, siteSettings } = useAppContext();
+  const { balance, kycStatus, isLoggedIn, currentUser, logout, siteSettings, claimDailyReward } = useAppContext();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isClaimingReward, setIsClaimingReward] = useState(false);
+  const [rewardMessage, setRewardMessage] = useState<string | null>(null);
+
+  const handleClaimReward = async () => {
+    setIsClaimingReward(true);
+    try {
+      const result = await claimDailyReward();
+      if (result.success) {
+        setRewardMessage(result.message || 'Reward claimed!');
+        setTimeout(() => setRewardMessage(null), 3000);
+      } else {
+        setRewardMessage(result.error || 'Failed to claim reward');
+        setTimeout(() => setRewardMessage(null), 3000);
+      }
+    } catch (err) {
+      setRewardMessage('Error claiming reward');
+      setTimeout(() => setRewardMessage(null), 3000);
+    } finally {
+      setIsClaimingReward(false);
+    }
+  };
 
   return (
     <>
@@ -61,6 +82,16 @@ export default function Navbar() {
                   </Link>
                 )}
 
+                <button 
+                  onClick={handleClaimReward} 
+                  disabled={isClaimingReward}
+                  className="flex items-center gap-2 bg-amber-900/40 px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-amber-600/50 hover:bg-amber-900/60 hover:border-amber-500/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Claim $20 daily reward"
+                >
+                  <Gift className="w-4 h-4 text-amber-400" />
+                  <span className="font-bold text-amber-400 text-sm md:text-base hidden sm:inline">Daily</span>
+                </button>
+
                 <Link href="/wallet" className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-slate-700 shadow-inner hover:bg-slate-700 transition-colors">
                   <Wallet className="w-4 h-4 text-emerald-400" />
                   <span className="font-mono font-bold text-emerald-400 text-sm md:text-base">
@@ -76,6 +107,12 @@ export default function Navbar() {
           </div>
         </div>
       </nav>
+
+      {rewardMessage && (
+        <div className="fixed top-20 right-4 bg-amber-900/80 border border-amber-600 text-amber-100 px-4 py-2 rounded-md shadow-lg">
+          {rewardMessage}
+        </div>
+      )}
 
       {isAuthModalOpen && <AuthModal onClose={() => setIsAuthModalOpen(false)} />}
     </>

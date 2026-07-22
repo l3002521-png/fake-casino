@@ -266,6 +266,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
+    if (action === 'claimDailyReward') {
+      const { userId } = payload;
+      const today = new Date().toISOString().split('T')[0];
+      
+      const users = await sql`
+        SELECT lastDailyRewardDate, balance
+        FROM accounts
+        WHERE id = ${userId}
+      `;
+      
+      if (users.length === 0) {
+        return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
+      }
+      
+      const lastRewardDate = getField<string>(users[0] as Record<string, unknown>, 'lastdailyrewarddate', 'lastDailyRewardDate');
+      
+      if (lastRewardDate === today) {
+        return NextResponse.json({ success: false, error: 'Daily reward already claimed today' }, { status: 400 });
+      }
+      
+      const result = await sql`
+        UPDATE accounts 
+        SET balance = balance + 20, lastDailyRewardDate = ${today}
+        WHERE id = ${userId} 
+        RETURNING balance
+      `;
+      
+      return NextResponse.json({ 
+        success: true, 
+        balance: Number(result[0].balance),
+        message: 'Claimed $20 daily reward!' 
+      });
+    }
+
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error) {
     console.error('Action failed:', error);

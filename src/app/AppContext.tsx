@@ -32,6 +32,7 @@ interface AppState {
   logout: () => void;
   refreshAccounts: () => Promise<void>;
   logGame: (game: string, bet: number, win: number, multiplier: number) => Promise<void>;
+  claimDailyReward: () => Promise<{ success: boolean; error?: string; message?: string }>;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -268,6 +269,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await apiCall('logGame', { userId: currentUser.id, game, bet, win, multiplier });
   };
 
+  const claimDailyReward = async () => {
+      if (!currentUser) return { success: false, error: 'Not logged in' };
+      const res = await apiCall('claimDailyReward', { userId: currentUser.id });
+      if (res.success) {
+          setCurrentUser({ ...currentUser, balance: res.balance });
+          await refreshAccounts();
+      }
+      return { success: res.success, error: res.error, message: res.message };
+  };
+
   if (!mounted) {
     return null;
   }
@@ -290,7 +301,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         refreshAccounts,
-        logGame
+        logGame,
+        claimDailyReward
       }}
     >
       {children}
