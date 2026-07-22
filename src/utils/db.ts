@@ -97,6 +97,19 @@ export async function initDb() {
     );
   `;
 
+  // Add missing columns if they don't exist
+  try {
+    await db`ALTER TABLE site_settings ADD COLUMN autoApproveKYC INTEGER NOT NULL DEFAULT 0;`;
+  } catch (e: unknown) {
+    // Column already exists, ignore error
+  }
+
+  try {
+    await db`ALTER TABLE accounts ADD COLUMN lastDailyRewardDate TEXT;`;
+  } catch (e: unknown) {
+    // Column already exists, ignore error
+  }
+
   await db`
     INSERT INTO site_settings (id, showPrototypeMessages, showDisclaimerScreen, autoApproveKYC)
     VALUES ('global', 1, 1, 0)
